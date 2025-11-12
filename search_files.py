@@ -1,59 +1,76 @@
-"""This module provides utilities for working with filesystem paths using pathlib."""
+"""
+Module: file_search_utils
+
+This module provides a utility function for searching files in a filesystem
+by filename masks. It supports single or multiple masks, limits on the number
+of files per mask, and maximum folder traversal depth. The search is safe,
+ignoring folders without read permissions.
+
+Key features:
+- Search by single or multiple filename masks.
+- Limit the number of files found per mask.
+- Limit folder traversal depth.
+- Return results as a list of pathlib.Path objects.
+- Cross-platform mask matching using fnmatch.
+"""
 
 from pathlib import Path
+from collections.abc import Iterable
+from fnmatch import fnmatch
 
 def find_files_by_masks(
-    folder_path: str,
-    search_masks: list[str] | str,
+    path: str,
+    masks: str | Iterable[str],
     max_depth: int | None = None,
     max_files: int | None = None,
-) -> dict[str, Path]:
-    
+) -> list[Path]:
+
     """
-    Search for files using masks in the specified folder path.
+    Search for files in a folder and its subfolders using filename masks.
 
-    :param folder_path: Path to the folder where the search starts
-    :param search_masks: Set of file name masks or a single mask string
-    :param max_depth: Maximum depth for folder traversal (None = no limit)
-    :param max_files: Maximum number of files to be found for each mask (None = no limit)
-    :return: dictionariy with pairs "filename: path"
+    :param path: Root folder path to start the search.
+    :param masks: Single filename mask or an iterable of masks (supports wildcards '*', '?').
+    :param max_depth: Maximum folder depth to traverse (None = unlimited).
+    :param max_files: Maximum number of files to find for each mask (None = unlimited).
+    :return: List of pathlib.Path objects for found files. Each file appears only once.
+
+    Notes:
+    - The search uses a depth-first traversal.
+    - Folders without read permissions are ignored.
+    - Mask matching uses fnmatch and compares only the filename (not the full path).
     """
 
-    folder_path = Path(folder_path)
+    path = Path(path)
 
-    # Convert each search mask in the sheet, typle or set to a dictionary
-    if isinstance(search_masks, str):
-        search_masks = {search_masks: 0}
-    elif (
-        isinstance(search_masks, list)
-        or isinstance(search_masks, tuple)
-        or isinstance(search_masks, set)
-    ):
-        search_masks = {mask: 0 for mask in search_masks}
+    # Преобразуем маски в словарь для подсчёта найденных файлов
+    if isinstance(masks, str):
+        masks = {masks: 0}
+    elif isinstance(masks, Iterable):
+        masks = {mask: 0 for mask in masks}
     else:
-        raise TypeError(f'Expected list, got {type(folder_path).__name__}')
+        raise TypeError(f'Expected string or iterable of strings, got {type(masks).__name__}')
 
-    # Create a stack of folder and add to it the inifial folder path and its depth equal to 0
-    stack = [(folder_path, 0)]
+    stack = [(path, 0)]  # DFS: стек папок с глубиной
+    result = []
 
-    # Create a dictionary "result", in which we will write the pairs "filename: path"
-    result = {}
-
-    # Main cycle
-    while stack:
+    while stack and masks:  # пока есть папки и маски
         current_folder, depth = stack.pop()
-
         try:
             for item in current_folder.iterdir():
                 if item.is_dir():
                     if max_depth is None or depth < max_depth:
                         stack.append((item, depth + 1))
                 else:
-                    for mask in search_masks.keys():
-                       if item.math(mask):
-                          pass 
+                    # Найти первую подходящую маску для файла
+                    mask = next((m for m in masks if fnmatch(item.name, m)), None)
+                    if mask:
+                        result.append(item)
+                        masks[mask] += 1
+                        # Удаляем маску, если достигнут лимит
+                        if max_files is not None and masks[mask] >= max_files:
+                            del masks[mask]
         except PermissionError:
+            # Игнорируем папки без доступа
             continue
 
-        return result
-    
+    return result
