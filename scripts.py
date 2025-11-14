@@ -1,4 +1,3 @@
-import tkinter as tk
 from tkinter import messagebox
 
 import xlwings as xw
@@ -8,9 +7,6 @@ def check_selection(is_one_area: bool = True) -> bool:
     book = xw.books.active
     sheet = book.sheets.active
     sel = book.selection
-
-    root = tk.Tk()
-    root.withdraw()
 
     if sel.columns.count != sheet.cells.columns.count:
         messagebox.showerror('Ошибка', 'Выделите хотя бы одну строку целиком')
