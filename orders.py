@@ -14,7 +14,7 @@ from docx import Document
 from tkinter import messagebox
 
 # Локальные модули
-from scripts import check_selection
+from checks import check_selection
 
 
 # ============================================================
@@ -32,11 +32,13 @@ def check_conditions() -> bool:
         bool: True, если условия выполнены, False иначе.
     """
     try:
+
+        # Запоминаем активную книгу и выделение в ней
         book = xw.books.active
         sel = book.selection
 
         # Проверка корректности выделения с помощью локального скрипта
-        if check_selection:
+        if not check_selection():
             return False
 
         # Проверяем, что все номера приказов одинаковы
@@ -62,16 +64,19 @@ def check_conditions() -> bool:
 def collect_info() -> tuple[dict[str, str | date | int], list[str]]:
     """
     Собирает информацию для приказа из выделенного диапазона Excel.
-    
+
     Предполагается, что проверка условий уже выполнена через `check_conditions`.
 
     Возвращает:
         main_info (dict): Словарь с основными данными приказа.
         studs_names (list): Список полных имен студентов.
     """
+
+    # Запоминаем активную книгу и выделение в ней
     book = xw.books.active
     sel = book.selection
 
+    # Записываем информацю о приказе из выделения
     main_info = {
         'ord_date': sel[0, 0].value,    # Дата приказа
         'ord_num': sel[0, 2].value,     # Номер приказа
@@ -84,8 +89,10 @@ def collect_info() -> tuple[dict[str, str | date | int], list[str]]:
         'hours': sel[0, 15].value       # Количество часов
     }
 
+    # Записываем ФИО студентов
     studs_names = [sel[i, 11].value for i in range(sel.rows.count)]
 
+    # Возвращаем главную информацию и ФИО студентов
     return main_info, studs_names
 
 
@@ -103,6 +110,7 @@ def def_template(ord_num: str, ord_type: str) -> Path | None:
     Возвращает:
         Path | None: Полный путь к файлу шаблона или None, если тип или шаблон не найден.
     """
+    # Устанавливаем переменную по-умолчанию: путь к папке шаблонов приказов
     templates_folder = Path(r'\\Win-1pvk6u4un23\общая папка\Macros\Templates\orders')
 
     doctype = {
@@ -132,7 +140,7 @@ def def_template(ord_num: str, ord_type: str) -> Path | None:
 # ============================================================
 # 4️⃣ Внесение информации в шаблон
 # ============================================================
-def fill_template(template_path: Path, main_info: dict[str | date | int], studs_names: list[str]):
+def fill_template(template_path: Path, main_info: dict[str, str | date | int], studs_names: list[str]):
     """
     Заполняет шаблон приказа данными из Excel.
 
@@ -171,7 +179,6 @@ def fill_template(template_path: Path, main_info: dict[str | date | int], studs_
         output_path = template_path.with_name(f'filled_{template_path.name}')
         doc.save(output_path)
 
-        messagebox.showinfo('Готово', f'Приказ успешно сформирован: {output_path.name}')
     except Exception as e:
         messagebox.showerror('Ошибка', f'Ошибка при заполнении шаблона: {e}')
 
