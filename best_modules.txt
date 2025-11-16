@@ -1,0 +1,19 @@
+Лучшие модули для python по направлениям
+
+1. GUI:
+    tkinter и его messagebox, simpledialog
+
+2. Работа с файловой системой:
+    pathlib и его объект Path
+
+3. Excel:
+    xlwings
+
+4. Word:
+    python-docx (но импортируется, как docx), объект Document
+
+5. XML (SVG, inkscape):
+    lxml
+
+6. Рашсиренная аннотация типов:
+    collections.abc, объект Iterable
